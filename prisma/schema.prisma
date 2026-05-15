@@ -1,0 +1,330 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationType {
+  PYROMETRY_PROVIDER
+  INTERNAL_HEAT_TREAT
+  CUSTOMER
+}
+
+enum UserRole {
+  ADMIN
+  QUALITY_MANAGER
+  PYROMETRY_TECH
+  AUDITOR
+  CUSTOMER_VIEWER
+}
+
+enum TestType {
+  SAT
+  TUS
+  CALIBRATION
+  THERMOCOUPLE_USAGE
+  MAINTENANCE_CHECK
+}
+
+enum ScheduleStatus {
+  PLANNED
+  DUE_SOON
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum RecordStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  VOIDED
+}
+
+enum AssetStatus {
+  ACTIVE
+  DUE_SOON
+  OVERDUE
+  BLOCKED
+  RETIRED
+}
+
+enum DocumentCategory {
+  SAT_REPORT
+  TUS_REPORT
+  CALIBRATION_REPORT
+  CERTIFICATE
+  PHOTO_EVIDENCE
+  PROCEDURE
+  AUDIT_PACKAGE
+  OTHER
+}
+
+model Organization {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  type      OrganizationType @default(INTERNAL_HEAT_TREAT)
+  legalName String?
+  taxId     String?
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  users         User[]
+  ownedSites    Site[]            @relation("OwnerOrganizationSites")
+  customerSites Site[]            @relation("CustomerOrganizationSites")
+  providerLinks ProviderCustomer[] @relation("ProviderOrg")
+  customerLinks ProviderCustomer[] @relation("CustomerOrg")
+  documents     Document[]
+  auditLogs     AuditLog[]
+}
+
+model ProviderCustomer {
+  id             String       @id @default(cuid())
+  providerOrgId  String
+  customerOrgId  String
+  serviceScope   String?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  providerOrg Organization @relation("ProviderOrg", fields: [providerOrgId], references: [id])
+  customerOrg Organization @relation("CustomerOrg", fields: [customerOrgId], references: [id])
+
+  @@unique([providerOrgId, customerOrgId])
+}
+
+model User {
+  id             String     @id @default(cuid())
+  organizationId String
+  name           String
+  email          String     @unique
+  role           UserRole   @default(CUSTOMER_VIEWER)
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  assignedSchedules TestSchedule[] @relation("AssignedSchedules")
+  approvals Approval[]
+  auditLogs AuditLog[]
+}
+
+model Site {
+  id                   String   @id @default(cuid())
+  ownerOrganizationId   String
+  customerOrganizationId String?
+  name                 String
+  code                 String
+  address              String?
+  city                 String?
+  state                String?
+  country              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // ownerOrganization = empresa que opera el sistema o proveedor de pirometría.
+  // customerOrganization = empresa dueña del activo cuando el proveedor atiende a terceros.
+  ownerOrganization    Organization @relation("OwnerOrganizationSites", fields: [ownerOrganizationId], references: [id])
+  customerOrganization Organization? @relation("CustomerOrganizationSites", fields: [customerOrganizationId], references: [id])
+  equipment            Equipment[]
+}
+
+model Equipment {
+  id             String      @id @default(cuid())
+  siteId         String
+  equipmentCode  String
+  name           String
+  process        String?
+  furnaceClass   String?
+  instrumentationType String?
+  operatingRange String?
+  satFrequencyDays Int?
+  tusFrequencyDays Int?
+  calibrationFrequencyDays Int?
+  status         AssetStatus @default(ACTIVE)
+  qrCode         String      @unique
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  site      Site @relation(fields: [siteId], references: [id])
+  schedules TestSchedule[]
+  records   PyrometryRecord[]
+  documents Document[]
+}
+
+model Instrument {
+  id             String      @id @default(cuid())
+  organizationId String
+  instrumentCode String
+  name           String
+  type           String
+  serialNumber   String?
+  calibrationDue DateTime?
+  status         AssetStatus @default(ACTIVE)
+  qrCode         String      @unique
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  records   PyrometryRecord[]
+  documents Document[]
+}
+
+model ReferenceStandard {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  description  String
+  uncertainty  String?
+  calibrationDue DateTime?
+  status       AssetStatus @default(ACTIVE)
+  qrCode       String      @unique
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  records   PyrometryRecord[]
+  documents Document[]
+}
+
+model Thermocouple {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  type          String
+  lot           String?
+  maxUses       Int?
+  currentUses   Int         @default(0)
+  maxExposureHours Float?
+  exposureHours Float       @default(0)
+  maxTemperature Float?
+  status        AssetStatus @default(ACTIVE)
+  qrCode        String      @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  records   PyrometryRecord[]
+  documents Document[]
+}
+
+model TestSchedule {
+  id              String         @id @default(cuid())
+  equipmentId     String
+  type            TestType
+  title           String
+  plannedStart    DateTime
+  plannedEnd      DateTime?
+  dueDate         DateTime
+  assignedToUserId String?
+  status          ScheduleStatus @default(PLANNED)
+  recurrenceRule  String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id])
+  assignedTo User?   @relation("AssignedSchedules", fields: [assignedToUserId], references: [id])
+  records    PyrometryRecord[]
+
+  @@index([type, dueDate, status])
+}
+
+model PyrometryRecord {
+  id                  String       @id @default(cuid())
+  scheduleId           String?
+  equipmentId          String
+  instrumentId         String?
+  thermocoupleId       String?
+  referenceStandardId  String?
+  type                TestType
+  status              RecordStatus @default(DRAFT)
+  performedAt         DateTime?
+  result              String?
+  tolerance           Float?
+  maxError            Float?
+  maxDeviation        Float?
+  technicianNotes     String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  schedule          TestSchedule?     @relation(fields: [scheduleId], references: [id])
+  equipment         Equipment         @relation(fields: [equipmentId], references: [id])
+  instrument        Instrument?        @relation(fields: [instrumentId], references: [id])
+  thermocouple      Thermocouple?      @relation(fields: [thermocoupleId], references: [id])
+  referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
+  documents         Document[]
+  approvals         Approval[]
+  riskAssessments   RiskAssessment[]
+}
+
+model Document {
+  id             String           @id @default(cuid())
+  organizationId String
+  equipmentId    String?
+  recordId       String?
+  instrumentId   String?
+  thermocoupleId String?
+  referenceStandardId String?
+  category       DocumentCategory
+  title          String
+  fileName       String
+  storageBucket  String           @default("pyrotrace-reports")
+  storagePath    String
+  mimeType       String?
+  sizeBytes      Int?
+  version        Int              @default(1)
+  checksum       String?
+  uploadedBy     String?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  equipment    Equipment?   @relation(fields: [equipmentId], references: [id])
+  record       PyrometryRecord? @relation(fields: [recordId], references: [id])
+  instrument   Instrument?  @relation(fields: [instrumentId], references: [id])
+  thermocouple Thermocouple? @relation(fields: [thermocoupleId], references: [id])
+  referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
+
+  @@index([organizationId, category, createdAt])
+}
+
+model Approval {
+  id        String       @id @default(cuid())
+  recordId  String
+  userId    String
+  status    RecordStatus
+  comment   String?
+  createdAt DateTime     @default(now())
+
+  record PyrometryRecord @relation(fields: [recordId], references: [id])
+  user   User             @relation(fields: [userId], references: [id])
+}
+
+model RiskAssessment {
+  id        String   @id @default(cuid())
+  recordId  String
+  level     String
+  score     Float
+  explanation String
+  recommendation String?
+  createdAt DateTime @default(now())
+
+  record PyrometryRecord @relation(fields: [recordId], references: [id])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  entityType     String
+  entityId       String
+  action         String
+  reason         String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+}

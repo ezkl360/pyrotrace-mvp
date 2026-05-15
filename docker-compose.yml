@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pyrotrace-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pyrotrace
+    ports:
+      - "5432:5432"
+    volumes:
+      - pyrotrace_pg:/var/lib/postgresql/data
+volumes:
+  pyrotrace_pg:
