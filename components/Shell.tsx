@@ -15,6 +15,7 @@ const nav = [
     section: "Pruebas",
     items: [
       ["Programación", "/test-schedules"],
+      ["Reglas de cumplimiento", "/compliance-rules"],
       ["SAT", "/sat-records"],
       ["TUS", "/tus-records"],
       ["Calibraciones", "/calibrations"],
