@@ -65,6 +65,35 @@ enum DocumentCategory {
   OTHER
 }
 
+enum ApplicableStandard {
+  AMS2750
+  AMS2770
+  CQI_9
+  CQI_11
+  CQI_12
+  CUSTOMER_SPECIFIC
+  OTHER
+}
+
+enum AmsFurnaceClass {
+  NOT_APPLICABLE
+  CLASS_1
+  CLASS_2
+  CLASS_3
+  CLASS_4
+  CLASS_5
+  CLASS_6
+}
+
+enum AmsInstrumentationType {
+  NOT_APPLICABLE
+  TYPE_A
+  TYPE_B
+  TYPE_C
+  TYPE_D
+  TYPE_E
+}
+
 model Organization {
   id        String           @id @default(cuid())
   name      String           @unique
@@ -76,8 +105,8 @@ model Organization {
   updatedAt DateTime         @updatedAt
 
   users         User[]
-  ownedSites    Site[]            @relation("OwnerOrganizationSites")
-  customerSites Site[]            @relation("CustomerOrganizationSites")
+  ownedSites    Site[]             @relation("OwnerOrganizationSites")
+  customerSites Site[]             @relation("CustomerOrganizationSites")
   providerLinks ProviderCustomer[] @relation("ProviderOrg")
   customerLinks ProviderCustomer[] @relation("CustomerOrg")
   documents     Document[]
@@ -85,12 +114,12 @@ model Organization {
 }
 
 model ProviderCustomer {
-  id             String       @id @default(cuid())
-  providerOrgId  String
-  customerOrgId  String
-  serviceScope   String?
-  active         Boolean      @default(true)
-  createdAt      DateTime     @default(now())
+  id            String   @id @default(cuid())
+  providerOrgId String
+  customerOrgId String
+  serviceScope  String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
 
   providerOrg Organization @relation("ProviderOrg", fields: [providerOrgId], references: [id])
   customerOrg Organization @relation("CustomerOrg", fields: [customerOrgId], references: [id])
@@ -99,62 +128,67 @@ model ProviderCustomer {
 }
 
 model User {
-  id             String     @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   name           String
-  email          String     @unique
-  role           UserRole   @default(CUSTOMER_VIEWER)
-  active         Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  email          String   @unique
+  role           UserRole @default(CUSTOMER_VIEWER)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization      Organization   @relation(fields: [organizationId], references: [id])
   assignedSchedules TestSchedule[] @relation("AssignedSchedules")
-  approvals Approval[]
-  auditLogs AuditLog[]
+  approvals         Approval[]
+  auditLogs         AuditLog[]
 }
 
 model Site {
-  id                   String   @id @default(cuid())
-  ownerOrganizationId   String
-  customerOrganizationId String?
-  name                 String
-  code                 String
-  address              String?
-  city                 String?
-  state                String?
-  country              String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  ownerOrganizationId     String
+  customerOrganizationId  String?
+  name                   String
+  code                   String
+  address                String?
+  city                   String?
+  state                  String?
+  country                String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  // ownerOrganization = empresa que opera el sistema o proveedor de pirometría.
-  // customerOrganization = empresa dueña del activo cuando el proveedor atiende a terceros.
-  ownerOrganization    Organization @relation("OwnerOrganizationSites", fields: [ownerOrganizationId], references: [id])
+  ownerOrganization    Organization  @relation("OwnerOrganizationSites", fields: [ownerOrganizationId], references: [id])
   customerOrganization Organization? @relation("CustomerOrganizationSites", fields: [customerOrganizationId], references: [id])
   equipment            Equipment[]
 }
 
 model Equipment {
-  id             String      @id @default(cuid())
-  siteId         String
-  equipmentCode  String
-  name           String
-  process        String?
-  furnaceClass   String?
-  instrumentationType String?
-  operatingRange String?
-  satFrequencyDays Int?
-  tusFrequencyDays Int?
-  calibrationFrequencyDays Int?
-  status         AssetStatus @default(ACTIVE)
-  qrCode         String      @unique
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                         String                 @id @default(cuid())
+  siteId                     String
+  equipmentCode              String
+  name                       String
+  process                    String?
+  applicableStandard          ApplicableStandard     @default(AMS2750)
+  amsFurnaceClass             AmsFurnaceClass        @default(NOT_APPLICABLE)
+  amsInstrumentationType      AmsInstrumentationType @default(NOT_APPLICABLE)
+  customerSpecificRequirement String?
+  furnaceClass                String?
+  instrumentationType         String?
+  operatingRange              String?
+  satFrequencyDays            Int?
+  tusFrequencyDays            Int?
+  calibrationFrequencyDays    Int?
+  status                     AssetStatus            @default(ACTIVE)
+  qrCode                     String                 @unique
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
 
-  site      Site @relation(fields: [siteId], references: [id])
+  site      Site              @relation(fields: [siteId], references: [id])
   schedules TestSchedule[]
   records   PyrometryRecord[]
   documents Document[]
+
+  @@unique([siteId, equipmentCode])
+  @@index([applicableStandard, status])
 }
 
 model Instrument {
@@ -175,56 +209,56 @@ model Instrument {
 }
 
 model ReferenceStandard {
-  id           String      @id @default(cuid())
-  code         String      @unique
-  description  String
-  uncertainty  String?
+  id             String      @id @default(cuid())
+  code           String      @unique
+  description    String
+  uncertainty    String?
   calibrationDue DateTime?
-  status       AssetStatus @default(ACTIVE)
-  qrCode       String      @unique
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  status         AssetStatus @default(ACTIVE)
+  qrCode         String      @unique
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   records   PyrometryRecord[]
   documents Document[]
 }
 
 model Thermocouple {
-  id            String      @id @default(cuid())
-  code          String      @unique
-  type          String
-  lot           String?
-  maxUses       Int?
-  currentUses   Int         @default(0)
+  id               String      @id @default(cuid())
+  code             String      @unique
+  type             String
+  lot              String?
+  maxUses          Int?
+  currentUses      Int         @default(0)
   maxExposureHours Float?
-  exposureHours Float       @default(0)
-  maxTemperature Float?
-  status        AssetStatus @default(ACTIVE)
-  qrCode        String      @unique
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  exposureHours    Float       @default(0)
+  maxTemperature   Float?
+  status           AssetStatus @default(ACTIVE)
+  qrCode           String      @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   records   PyrometryRecord[]
   documents Document[]
 }
 
 model TestSchedule {
-  id              String         @id @default(cuid())
-  equipmentId     String
-  type            TestType
-  title           String
-  plannedStart    DateTime
-  plannedEnd      DateTime?
-  dueDate         DateTime
+  id               String         @id @default(cuid())
+  equipmentId      String
+  type             TestType
+  title            String
+  plannedStart     DateTime
+  plannedEnd       DateTime?
+  dueDate          DateTime
   assignedToUserId String?
-  status          ScheduleStatus @default(PLANNED)
-  recurrenceRule  String?
-  notes           String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  status           ScheduleStatus @default(PLANNED)
+  recurrenceRule   String?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  equipment Equipment @relation(fields: [equipmentId], references: [id])
-  assignedTo User?   @relation("AssignedSchedules", fields: [assignedToUserId], references: [id])
+  equipment  Equipment         @relation(fields: [equipmentId], references: [id])
+  assignedTo User?             @relation("AssignedSchedules", fields: [assignedToUserId], references: [id])
   records    PyrometryRecord[]
 
   @@index([type, dueDate, status])
@@ -232,11 +266,11 @@ model TestSchedule {
 
 model PyrometryRecord {
   id                  String       @id @default(cuid())
-  scheduleId           String?
-  equipmentId          String
-  instrumentId         String?
-  thermocoupleId       String?
-  referenceStandardId  String?
+  scheduleId          String?
+  equipmentId         String
+  instrumentId        String?
+  thermocoupleId      String?
+  referenceStandardId String?
   type                TestType
   status              RecordStatus @default(DRAFT)
   performedAt         DateTime?
@@ -248,8 +282,8 @@ model PyrometryRecord {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  schedule          TestSchedule?     @relation(fields: [scheduleId], references: [id])
-  equipment         Equipment         @relation(fields: [equipmentId], references: [id])
+  schedule          TestSchedule?      @relation(fields: [scheduleId], references: [id])
+  equipment         Equipment          @relation(fields: [equipmentId], references: [id])
   instrument        Instrument?        @relation(fields: [instrumentId], references: [id])
   thermocouple      Thermocouple?      @relation(fields: [thermocoupleId], references: [id])
   referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
@@ -259,30 +293,30 @@ model PyrometryRecord {
 }
 
 model Document {
-  id             String           @id @default(cuid())
-  organizationId String
-  equipmentId    String?
-  recordId       String?
-  instrumentId   String?
-  thermocoupleId String?
+  id                  String           @id @default(cuid())
+  organizationId      String
+  equipmentId         String?
+  recordId            String?
+  instrumentId        String?
+  thermocoupleId      String?
   referenceStandardId String?
-  category       DocumentCategory
-  title          String
-  fileName       String
-  storageBucket  String           @default("pyrotrace-reports")
-  storagePath    String
-  mimeType       String?
-  sizeBytes      Int?
-  version        Int              @default(1)
-  checksum       String?
-  uploadedBy     String?
-  createdAt      DateTime         @default(now())
+  category            DocumentCategory
+  title               String
+  fileName            String
+  storageBucket       String           @default("pyrotrace-reports")
+  storagePath         String
+  mimeType            String?
+  sizeBytes           Int?
+  version             Int              @default(1)
+  checksum            String?
+  uploadedBy          String?
+  createdAt           DateTime         @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  equipment    Equipment?   @relation(fields: [equipmentId], references: [id])
-  record       PyrometryRecord? @relation(fields: [recordId], references: [id])
-  instrument   Instrument?  @relation(fields: [instrumentId], references: [id])
-  thermocouple Thermocouple? @relation(fields: [thermocoupleId], references: [id])
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  equipment         Equipment?         @relation(fields: [equipmentId], references: [id])
+  record            PyrometryRecord?   @relation(fields: [recordId], references: [id])
+  instrument        Instrument?        @relation(fields: [instrumentId], references: [id])
+  thermocouple      Thermocouple?      @relation(fields: [thermocoupleId], references: [id])
   referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
 
   @@index([organizationId, category, createdAt])
@@ -297,17 +331,17 @@ model Approval {
   createdAt DateTime     @default(now())
 
   record PyrometryRecord @relation(fields: [recordId], references: [id])
-  user   User             @relation(fields: [userId], references: [id])
+  user   User            @relation(fields: [userId], references: [id])
 }
 
 model RiskAssessment {
-  id        String   @id @default(cuid())
-  recordId  String
-  level     String
-  score     Float
-  explanation String
+  id             String   @id @default(cuid())
+  recordId       String
+  level          String
+  score          Float
+  explanation    String
   recommendation String?
-  createdAt DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   record PyrometryRecord @relation(fields: [recordId], references: [id])
 }
