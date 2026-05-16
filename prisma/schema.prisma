@@ -27,6 +27,8 @@ enum TestType {
   CALIBRATION
   THERMOCOUPLE_USAGE
   MAINTENANCE_CHECK
+  ALARM_TEST
+  OTHER_TEST
 }
 
 enum ScheduleStatus {
@@ -52,6 +54,11 @@ enum AssetStatus {
   OVERDUE
   BLOCKED
   RETIRED
+}
+
+enum TemperatureUnit {
+  CELSIUS
+  FAHRENHEIT
 }
 
 enum DocumentCategory {
@@ -144,7 +151,7 @@ model User {
 }
 
 model Site {
-  id                     String   @id @default(cuid())
+  id                     String          @id @default(cuid())
   ownerOrganizationId     String
   customerOrganizationId  String?
   name                   String
@@ -153,8 +160,9 @@ model Site {
   city                   String?
   state                  String?
   country                String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  defaultTemperatureUnit TemperatureUnit @default(CELSIUS)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 
   ownerOrganization    Organization  @relation("OwnerOrganizationSites", fields: [ownerOrganizationId], references: [id])
   customerOrganization Organization? @relation("CustomerOrganizationSites", fields: [customerOrganizationId], references: [id])
@@ -167,6 +175,7 @@ model Equipment {
   equipmentCode              String
   name                       String
   process                    String?
+  temperatureUnit            TemperatureUnit        @default(CELSIUS)
   applicableStandard          ApplicableStandard     @default(AMS2750)
   amsFurnaceClass             AmsFurnaceClass        @default(NOT_APPLICABLE)
   amsInstrumentationType      AmsInstrumentationType @default(NOT_APPLICABLE)
@@ -189,6 +198,7 @@ model Equipment {
 
   @@unique([siteId, equipmentCode])
   @@index([applicableStandard, status])
+  @@index([temperatureUnit])
 }
 
 model Instrument {
@@ -242,6 +252,27 @@ model Thermocouple {
   documents Document[]
 }
 
+model ComplianceRule {
+  id                    String                 @id @default(cuid())
+  name                  String
+  applicableStandard    ApplicableStandard
+  testType              TestType
+  temperatureUnit       TemperatureUnit
+  amsFurnaceClass        AmsFurnaceClass        @default(NOT_APPLICABLE)
+  amsInstrumentationType AmsInstrumentationType @default(NOT_APPLICABLE)
+  toleranceLimit        Float
+  toleranceLabel        String?
+  active                Boolean                @default(true)
+  notes                 String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  records PyrometryRecord[]
+
+  @@index([applicableStandard, testType, temperatureUnit])
+  @@index([amsFurnaceClass, amsInstrumentationType])
+}
+
 model TestSchedule {
   id               String         @id @default(cuid())
   equipmentId      String
@@ -271,6 +302,7 @@ model PyrometryRecord {
   instrumentId        String?
   thermocoupleId      String?
   referenceStandardId String?
+  complianceRuleId    String?
   type                TestType
   status              RecordStatus @default(DRAFT)
   performedAt         DateTime?
@@ -287,6 +319,7 @@ model PyrometryRecord {
   instrument        Instrument?        @relation(fields: [instrumentId], references: [id])
   thermocouple      Thermocouple?      @relation(fields: [thermocoupleId], references: [id])
   referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
+  complianceRule    ComplianceRule?    @relation(fields: [complianceRuleId], references: [id])
   documents         Document[]
   approvals         Approval[]
   riskAssessments   RiskAssessment[]

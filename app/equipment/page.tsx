@@ -44,6 +44,12 @@ function formatInstrumentation(value: string) {
   return labels[value] ?? value;
 }
 
+function formatTemperatureUnit(value: string) {
+  if (value === "CELSIUS") return "°C";
+  if (value === "FAHRENHEIT") return "°F";
+  return value;
+}
+
 export default async function EquipmentPage() {
   const equipment = await prisma.equipment.findMany({
     include: {
@@ -65,8 +71,8 @@ export default async function EquipmentPage() {
         <div>
           <h1 className="text-3xl font-bold">Equipos térmicos</h1>
           <p className="mt-2 text-slate-600">
-            Cada equipo queda ligado a sitio, empresa operadora, empresa cliente
-            y norma aplicable.
+            Cada equipo queda ligado a sitio, empresa cliente, norma aplicable,
+            unidad de operación y reglas de cumplimiento.
           </p>
         </div>
 
@@ -91,8 +97,8 @@ export default async function EquipmentPage() {
                   <th className="py-3">Código</th>
                   <th>Equipo</th>
                   <th>Sitio</th>
-                  <th>Proveedor / dueño</th>
                   <th>Cliente</th>
+                  <th>Unidad</th>
                   <th>Norma</th>
                   <th>Clase AMS</th>
                   <th>Instrumentación</th>
@@ -109,8 +115,8 @@ export default async function EquipmentPage() {
                     </td>
                     <td>{e.name}</td>
                     <td>{e.site.name}</td>
-                    <td>{e.site.ownerOrganization.name}</td>
                     <td>{e.site.customerOrganization?.name ?? "Interno"}</td>
+                    <td>{formatTemperatureUnit(e.temperatureUnit)}</td>
                     <td>{formatStandard(e.applicableStandard)}</td>
                     <td>{formatAmsClass(e.amsFurnaceClass)}</td>
                     <td>{formatInstrumentation(e.amsInstrumentationType)}</td>

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { TemperatureUnit } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,10 @@ async function createSite(formData: FormData) {
   const city = String(formData.get("city") || "").trim();
   const state = String(formData.get("state") || "").trim();
   const country = String(formData.get("country") || "").trim();
+
+  const defaultTemperatureUnit = String(
+    formData.get("defaultTemperatureUnit") || "CELSIUS"
+  ) as TemperatureUnit;
 
   if (!ownerOrganizationId) {
     throw new Error("Debes seleccionar una empresa operadora.");
@@ -43,6 +48,7 @@ async function createSite(formData: FormData) {
       city: city || null,
       state: state || null,
       country: country || null,
+      defaultTemperatureUnit,
     },
   });
 
@@ -70,8 +76,8 @@ export default async function NewSitePage() {
 
           <p className="mt-3 text-slate-300">
             Registra una planta, ubicación o sitio donde se encuentren equipos
-            térmicos. El sitio debe pertenecer a una empresa operadora y puede
-            asociarse también a un cliente externo.
+            térmicos. Cada sitio tiene una unidad de temperatura predeterminada,
+            pero cada equipo puede tener su propia unidad real de operación.
           </p>
         </div>
 
@@ -80,8 +86,7 @@ export default async function NewSitePage() {
             <h2 className="text-lg font-semibold">Primero crea una empresa</h2>
             <p className="mt-2 text-sm leading-6">
               Para registrar un sitio necesitas tener al menos una empresa
-              creada. Ve al módulo de empresas y registra una empresa operadora
-              o cliente.
+              creada.
             </p>
 
             <a
@@ -117,8 +122,8 @@ export default async function NewSitePage() {
                 </select>
 
                 <p className="mt-2 text-xs text-slate-400">
-                  Es la empresa que opera el sistema o el proveedor que administra
-                  el servicio.
+                  Es la empresa que opera el sistema o el proveedor que
+                  administra el servicio.
                 </p>
               </div>
 
@@ -141,8 +146,8 @@ export default async function NewSitePage() {
                 </select>
 
                 <p className="mt-2 text-xs text-slate-400">
-                  Úsalo cuando una empresa proveedora de pirometría atiende a una
-                  planta de otra empresa.
+                  Úsalo cuando una empresa proveedora de pirometría atiende a
+                  una planta de otra empresa.
                 </p>
               </div>
 
@@ -170,6 +175,27 @@ export default async function NewSitePage() {
                   placeholder="Ej. QRO-HT-01"
                   className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-400"
                 />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-200">
+                  Unidad de temperatura predeterminada *
+                </label>
+
+                <select
+                  name="defaultTemperatureUnit"
+                  defaultValue="CELSIUS"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-cyan-400"
+                >
+                  <option value="CELSIUS">Celsius °C</option>
+                  <option value="FAHRENHEIT">Fahrenheit °F</option>
+                </select>
+
+                <p className="mt-2 text-xs text-slate-400">
+                  Esta unidad funciona como sugerencia para los equipos nuevos
+                  de esta planta. Cada horno/equipo puede usar una unidad
+                  diferente.
+                </p>
               </div>
 
               <div>

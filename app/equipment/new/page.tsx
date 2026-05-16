@@ -6,7 +6,14 @@ import {
   ApplicableStandard,
   AmsFurnaceClass,
   AmsInstrumentationType,
+  TemperatureUnit,
 } from "@prisma/client";
+
+function formatTemperatureUnit(value: string) {
+  if (value === "CELSIUS") return "Celsius °C";
+  if (value === "FAHRENHEIT") return "Fahrenheit °F";
+  return value;
+}
 
 async function createEquipment(formData: FormData) {
   "use server";
@@ -15,6 +22,10 @@ async function createEquipment(formData: FormData) {
   const equipmentCode = String(formData.get("equipmentCode") || "").trim();
   const name = String(formData.get("name") || "").trim();
   const process = String(formData.get("process") || "").trim();
+
+  const temperatureUnit = String(
+    formData.get("temperatureUnit") || "CELSIUS"
+  ) as TemperatureUnit;
 
   const applicableStandard = String(
     formData.get("applicableStandard") || "AMS2750"
@@ -64,6 +75,7 @@ async function createEquipment(formData: FormData) {
       equipmentCode,
       name,
       process: process || null,
+      temperatureUnit,
       applicableStandard,
       amsFurnaceClass,
       amsInstrumentationType,
@@ -140,10 +152,16 @@ export default async function NewEquipmentPage() {
                     {site.name} — {site.ownerOrganization.name}
                     {site.customerOrganization
                       ? ` / Cliente: ${site.customerOrganization.name}`
-                      : ""}
+                      : ""}{" "}
+                    / Default: {formatTemperatureUnit(site.defaultTemperatureUnit)}
                   </option>
                 ))}
               </select>
+
+              <p className="mt-2 text-xs text-slate-500">
+                El sitio tiene una unidad predeterminada, pero el equipo puede
+                operar en una unidad distinta.
+              </p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -174,7 +192,7 @@ export default async function NewEquipmentPage() {
               </div>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-3">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Proceso
@@ -197,6 +215,26 @@ export default async function NewEquipmentPage() {
                   placeholder="Ej. 150 °C - 650 °C"
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
                 />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Unidad real del equipo *
+                </label>
+
+                <select
+                  name="temperatureUnit"
+                  defaultValue="CELSIUS"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+                >
+                  <option value="CELSIUS">Celsius °C</option>
+                  <option value="FAHRENHEIT">Fahrenheit °F</option>
+                </select>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Esta unidad será usada para SAT, TUS, calibraciones y reglas
+                  de tolerancia del equipo.
+                </p>
               </div>
             </div>
 

@@ -2,6 +2,12 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function formatTemperatureUnit(value: string) {
+  if (value === "CELSIUS") return "Celsius °C";
+  if (value === "FAHRENHEIT") return "Fahrenheit °F";
+  return value;
+}
+
 export default async function SitesPage() {
   const sites = await prisma.site.findMany({
     include: {
@@ -28,8 +34,8 @@ export default async function SitesPage() {
 
             <p className="mt-3 max-w-3xl text-slate-300">
               Administra plantas, ubicaciones o sitios donde se encuentran los
-              equipos térmicos. Cada sitio pertenece a una empresa operadora y,
-              si aplica, a una empresa cliente.
+              equipos térmicos. Cada sitio tiene una unidad de temperatura
+              predeterminada, pero cada equipo puede tener su propia unidad.
             </p>
           </div>
 
@@ -49,6 +55,7 @@ export default async function SitesPage() {
                 <th className="px-6 py-4 font-semibold">Sitio</th>
                 <th className="px-6 py-4 font-semibold">Empresa operadora</th>
                 <th className="px-6 py-4 font-semibold">Cliente</th>
+                <th className="px-6 py-4 font-semibold">Unidad default</th>
                 <th className="px-6 py-4 font-semibold">Ubicación</th>
                 <th className="px-6 py-4 font-semibold">Creado</th>
               </tr>
@@ -58,7 +65,7 @@ export default async function SitesPage() {
               {sites.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-6 py-10 text-center text-slate-400"
                   >
                     No hay plantas o sitios registrados todavía.
@@ -84,6 +91,10 @@ export default async function SitesPage() {
 
                     <td className="px-6 py-4 text-slate-300">
                       {site.customerOrganization?.name ?? "—"}
+                    </td>
+
+                    <td className="px-6 py-4 text-slate-300">
+                      {formatTemperatureUnit(site.defaultTemperatureUnit)}
                     </td>
 
                     <td className="px-6 py-4 text-slate-300">
@@ -121,4 +132,3 @@ export default async function SitesPage() {
     </main>
   );
 }
-
