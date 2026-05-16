@@ -102,14 +102,15 @@ enum AmsInstrumentationType {
 }
 
 model Organization {
-  id        String           @id @default(cuid())
-  name      String           @unique
-  type      OrganizationType @default(INTERNAL_HEAT_TREAT)
-  legalName String?
-  taxId     String?
-  notes     String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  name            String           @unique
+  type            OrganizationType @default(INTERNAL_HEAT_TREAT)
+  legalName       String?
+  taxId           String?
+  notes           String?
+  defaultLanguage String           @default("en")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   users         User[]
   ownedSites    Site[]             @relation("OwnerOrganizationSites")
@@ -121,12 +122,12 @@ model Organization {
 }
 
 model ProviderCustomer {
-  id            String   @id @default(cuid())
+  id             String   @id @default(cuid())
   providerOrgId String
   customerOrgId String
   serviceScope  String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
   providerOrg Organization @relation("ProviderOrg", fields: [providerOrgId], references: [id])
   customerOrg Organization @relation("CustomerOrg", fields: [customerOrgId], references: [id])
@@ -140,6 +141,7 @@ model User {
   name           String
   email          String   @unique
   role           UserRole @default(CUSTOMER_VIEWER)
+  language       String   @default("en")
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -192,6 +194,7 @@ model Equipment {
   updatedAt                  DateTime               @updatedAt
 
   site      Site              @relation(fields: [siteId], references: [id])
+  zones     EquipmentZone[]
   schedules TestSchedule[]
   records   PyrometryRecord[]
   documents Document[]
@@ -201,18 +204,39 @@ model Equipment {
   @@index([temperatureUnit])
 }
 
+model EquipmentZone {
+  id                  String      @id @default(cuid())
+  equipmentId          String
+  zoneCode             String
+  name                String
+  description          String?
+  operatingMin         Float?
+  operatingMax         Float?
+  nominalSetpoint      Float?
+  requiresSat          Boolean     @default(true)
+  requiresCalibration  Boolean     @default(true)
+  status              AssetStatus @default(ACTIVE)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@unique([equipmentId, zoneCode])
+  @@index([equipmentId, status])
+}
+
 model Instrument {
-  id             String      @id @default(cuid())
-  organizationId String
-  instrumentCode String
-  name           String
-  type           String
-  serialNumber   String?
-  calibrationDue DateTime?
-  status         AssetStatus @default(ACTIVE)
-  qrCode         String      @unique
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  organizationId  String
+  instrumentCode  String
+  name            String
+  type            String
+  serialNumber    String?
+  calibrationDue  DateTime?
+  status          AssetStatus @default(ACTIVE)
+  qrCode          String      @unique
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   records   PyrometryRecord[]
   documents Document[]
@@ -253,19 +277,19 @@ model Thermocouple {
 }
 
 model ComplianceRule {
-  id                    String                 @id @default(cuid())
-  name                  String
-  applicableStandard    ApplicableStandard
-  testType              TestType
-  temperatureUnit       TemperatureUnit
-  amsFurnaceClass        AmsFurnaceClass        @default(NOT_APPLICABLE)
-  amsInstrumentationType AmsInstrumentationType @default(NOT_APPLICABLE)
-  toleranceLimit        Float
-  toleranceLabel        String?
-  active                Boolean                @default(true)
-  notes                 String?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                     String                 @id @default(cuid())
+  name                   String
+  applicableStandard     ApplicableStandard
+  testType               TestType
+  temperatureUnit        TemperatureUnit
+  amsFurnaceClass         AmsFurnaceClass        @default(NOT_APPLICABLE)
+  amsInstrumentationType  AmsInstrumentationType @default(NOT_APPLICABLE)
+  toleranceLimit         Float
+  toleranceLabel         String?
+  active                 Boolean                @default(true)
+  notes                  String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   records PyrometryRecord[]
 
@@ -323,6 +347,24 @@ model PyrometryRecord {
   documents         Document[]
   approvals         Approval[]
   riskAssessments   RiskAssessment[]
+  satRecord         SatRecord?
+}
+
+model SatRecord {
+  id                        String   @id @default(cuid())
+  pyrometryRecordId          String   @unique
+  setpoint                  Float
+  systemReading             Float
+  referenceReading          Float
+  correctionFactor          Float    @default(0)
+  correctedReferenceReading Float
+  error                     Float
+  absoluteError             Float
+  pass                      Boolean
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  pyrometryRecord PyrometryRecord @relation(fields: [pyrometryRecordId], references: [id])
 }
 
 model Document {
@@ -343,6 +385,7 @@ model Document {
   version             Int              @default(1)
   checksum            String?
   uploadedBy          String?
+  language            String           @default("en")
   createdAt           DateTime         @default(now())
 
   organization      Organization       @relation(fields: [organizationId], references: [id])

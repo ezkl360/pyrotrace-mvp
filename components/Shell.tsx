@@ -9,6 +9,7 @@ const nav = [
       ["Empresas", "/organizations"],
       ["Sitios / Plantas", "/sites"],
       ["Equipos térmicos", "/equipment"],
+      ["Zonas de equipo", "/equipment-zones"],
     ],
   },
   {
