@@ -7,3 +7,6 @@ build
 coverage
 *.log
 .prisma
+
+public/uploads/reports/*
+!public/uploads/reports/.gitkeep
