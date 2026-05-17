@@ -27,6 +27,7 @@ const nav = [
   {
     section: "Activos y evidencia",
     items: [
+      ["Instrumentos", "/instruments"],
       ["Termopares / sensores", "/thermocouples"],
       ["Reportes / Storage", "/documents"],
     ],

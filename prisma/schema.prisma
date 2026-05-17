@@ -117,6 +117,7 @@ model Organization {
   customerSites Site[]             @relation("CustomerOrganizationSites")
   providerLinks ProviderCustomer[] @relation("ProviderOrg")
   customerLinks ProviderCustomer[] @relation("CustomerOrg")
+  instruments   Instrument[]
   documents     Document[]
   auditLogs     AuditLog[]
 }
@@ -226,20 +227,44 @@ model EquipmentZone {
 }
 
 model Instrument {
-  id              String      @id @default(cuid())
-  organizationId  String
-  instrumentCode  String
-  name            String
-  type            String
-  serialNumber    String?
-  calibrationDue  DateTime?
-  status          AssetStatus @default(ACTIVE)
-  qrCode          String      @unique
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  organizationId String
+  instrumentCode String
+  name           String
+  type           String
+  serialNumber   String?
+  calibrationDue DateTime?
+  status         AssetStatus @default(ACTIVE)
+  qrCode         String      @unique
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  records   PyrometryRecord[]
-  documents Document[]
+  organization      Organization                 @relation(fields: [organizationId], references: [id])
+  correctionFactors InstrumentCorrectionFactor[]
+  records           PyrometryRecord[]
+  documents         Document[]
+
+  @@unique([organizationId, instrumentCode])
+  @@index([organizationId, status])
+}
+
+model InstrumentCorrectionFactor {
+  id                 String          @id @default(cuid())
+  instrumentId       String
+  nominalTemperature Float
+  correctionFactor   Float
+  temperatureUnit    TemperatureUnit
+  uncertainty        Float?
+  certificateNumber  String?
+  notes              String?
+  active             Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  instrument Instrument @relation(fields: [instrumentId], references: [id])
+
+  @@index([instrumentId, temperatureUnit])
+  @@unique([instrumentId, nominalTemperature, temperatureUnit])
 }
 
 model ReferenceStandard {
