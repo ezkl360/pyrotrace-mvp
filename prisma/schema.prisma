@@ -101,6 +101,24 @@ enum AmsInstrumentationType {
   TYPE_E
 }
 
+enum CalibrationAssetType {
+  PRIMARY_STANDARD
+  SECONDARY_STANDARD
+  FIELD_TEST_INSTRUMENT
+  EQUIPMENT_INSTRUMENTATION
+  TEST_THERMOCOUPLE
+  REFERENCE_STANDARD
+  OTHER
+}
+
+enum CalibrationResult {
+  PASS
+  FAIL
+  LIMITED
+  AS_FOUND_ONLY
+  VOID
+}
+
 model Organization {
   id              String           @id @default(cuid())
   name            String           @unique
@@ -112,14 +130,15 @@ model Organization {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  users         User[]
-  ownedSites    Site[]             @relation("OwnerOrganizationSites")
-  customerSites Site[]             @relation("CustomerOrganizationSites")
-  providerLinks ProviderCustomer[] @relation("ProviderOrg")
-  customerLinks ProviderCustomer[] @relation("CustomerOrg")
-  instruments   Instrument[]
-  documents     Document[]
-  auditLogs     AuditLog[]
+  users             User[]
+  ownedSites        Site[]             @relation("OwnerOrganizationSites")
+  customerSites     Site[]             @relation("CustomerOrganizationSites")
+  providerLinks     ProviderCustomer[] @relation("ProviderOrg")
+  customerLinks     ProviderCustomer[] @relation("CustomerOrg")
+  instruments       Instrument[]
+  calibrationAssets CalibrationAsset[]
+  documents         Document[]
+  auditLogs         AuditLog[]
 }
 
 model ProviderCustomer {
@@ -267,6 +286,70 @@ model InstrumentCorrectionFactor {
   @@unique([instrumentId, nominalTemperature, temperatureUnit])
 }
 
+model CalibrationAsset {
+  id             String               @id @default(cuid())
+  organizationId String
+  assetCode      String
+  name           String
+  type           CalibrationAssetType
+  description    String?
+  serialNumber   String?
+  status         AssetStatus          @default(ACTIVE)
+  qrCode         String               @unique
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization             Organization        @relation(fields: [organizationId], references: [id])
+  calibrationsAsCalibrated CalibrationRecord[]  @relation("CalibratedAsset")
+  calibrationsAsReference  CalibrationRecord[]  @relation("ReferenceAsset")
+
+  @@unique([organizationId, assetCode])
+  @@index([organizationId, type, status])
+}
+
+model CalibrationRecord {
+  id                String            @id @default(cuid())
+  calibratedAssetId String
+  referenceAssetId  String?
+  certificateNumber String?
+  calibrationDate   DateTime
+  dueDate           DateTime?
+  laboratory        String?
+  result            CalibrationResult @default(PASS)
+  notes             String?
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  calibratedAsset CalibrationAsset  @relation("CalibratedAsset", fields: [calibratedAssetId], references: [id])
+  referenceAsset  CalibrationAsset? @relation("ReferenceAsset", fields: [referenceAssetId], references: [id])
+  points          CalibrationPoint[]
+  documents       Document[]
+
+  @@index([calibratedAssetId, calibrationDate])
+  @@index([referenceAssetId])
+  @@index([calibratedAssetId, active])
+}
+
+model CalibrationPoint {
+  id                 String          @id @default(cuid())
+  calibrationRecordId String
+  nominalTemperature Float
+  indicatedReading   Float?
+  referenceReading   Float?
+  correctionFactor   Float
+  temperatureUnit    TemperatureUnit
+  uncertainty        Float?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  calibrationRecord CalibrationRecord @relation(fields: [calibrationRecordId], references: [id])
+
+  @@index([calibrationRecordId, temperatureUnit])
+  @@unique([calibrationRecordId, nominalTemperature, temperatureUnit])
+}
+
 model ReferenceStandard {
   id             String      @id @default(cuid())
   code           String      @unique
@@ -400,6 +483,7 @@ model Document {
   instrumentId        String?
   thermocoupleId      String?
   referenceStandardId String?
+  calibrationRecordId String?
   category            DocumentCategory
   title               String
   fileName            String
@@ -419,6 +503,7 @@ model Document {
   instrument        Instrument?        @relation(fields: [instrumentId], references: [id])
   thermocouple      Thermocouple?      @relation(fields: [thermocoupleId], references: [id])
   referenceStandard ReferenceStandard? @relation(fields: [referenceStandardId], references: [id])
+  calibrationRecord CalibrationRecord? @relation(fields: [calibrationRecordId], references: [id])
 
   @@index([organizationId, category, createdAt])
 }

@@ -27,7 +27,9 @@ const nav = [
   {
     section: "Activos y evidencia",
     items: [
+      ["Activos metrológicos", "/calibration-assets"],
       ["Instrumentos", "/instruments"],
+      ["Factores instrumentos", "/instrument-correction-factors"],
       ["Termopares / sensores", "/thermocouples"],
       ["Reportes / Storage", "/documents"],
     ],
